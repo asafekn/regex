@@ -1,4 +1,10 @@
 name: Build and Test
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+
 jobs:
   build:
     name: GHC ${{ matrix.ghc }} on ${{ matrix.os }}
