@@ -1,5 +1,6 @@
 module Regex where
 
+import Control.Applicative (asum)
 import Data.List (tails)
 import Data.Char (isDigit)
 
@@ -68,7 +69,8 @@ data Regex
 type Match = String
 
 evaluate :: Regex -> String -> Maybe Match
-evaluate regex str = parse (regexParser regex) str
+evaluate regex str =
+  asum $ fmap (parse (regexParser regex)) $ tails str
 
 regexParser :: Regex -> Parser String
 regexParser r0 = ParserConstructor (run r0)
