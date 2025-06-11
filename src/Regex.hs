@@ -2,62 +2,14 @@ module Regex where
 
 import Control.Applicative (asum)
 import Data.List (tails)
-import Data.Char (isDigit)
-
-test :: String -> String -> Bool
-test regex str =
-  case regex of
-    '^' : rs -> testAux rs str
-    _ -> or (map (testAux regex) (tails str))
-
-testAux :: String -> String -> Bool
-testAux regex str =
-  case regex of
-    [] -> True
-    '$' : _ -> str == []
-
-    c : '*' : rs ->
-      case str of
-        [] -> testAux rs str
-        s : ss ->
-          if s == c
-          then testAux regex ss || testAux rs str || testAux rs ss
-          else testAux rs str
-
-    c : '+' : rs ->
-      case str of
-         [] -> False
-         s : ss ->
-          if s == c
-          then testAux regex ss || testAux rs ss
-          else False
-
-    c : rs ->
-      case str of
-        [] -> False
-        s : ss ->
-          if c == s
-          then testAux rs ss
-          else False
-
 
 data Parser a = ParserConstructor (String -> [(a, String)])
-
-parserInt :: Parser Int
-parserInt = ParserConstructor f
-  where
-  f :: String -> [(Int, String)]
-  f str =
-    case span isDigit str of
-      ([], _) -> []
-      (digits, rest) -> [(read digits, rest)]
 
 parse :: Parser a -> String -> Maybe a
 parse (ParserConstructor f) str =
   case f str of
     [] -> Nothing
-    [(x, _)] -> Just x
-    _ : _ -> error "ambiguous result"
+    (x, _) : _ -> Just x
 
 data Regex
   = MatchEnd        -- '$'
@@ -65,6 +17,7 @@ data Regex
   | And Regex Regex -- "aa"
   | Plus Regex      -- '+'
   | Asterisk Regex  -- '*'
+  | MatchStart      -- '^'
 
 type Match = String
 
@@ -105,11 +58,10 @@ regexParser r0 = ParserConstructor (run r0)
         zeroOrMore x str
 
   zeroOrMore :: Regex -> String -> [(String, String)]
-  zeroOrMore r str =
-    case run r str of
-      [] -> [("", str)]
-      xs -> do
-        (x, str') <- xs
-        (y, str'') <- zeroOrMore r str'
-        [("", str), (x <> y, str'')]
-
+  zeroOrMore r str = more <> zero
+    where
+    zero = [("", str)]
+    more = do
+      (x, str') <- run r str
+      (y, str'') <- zeroOrMore r str'
+      return (x <> y, str'')
