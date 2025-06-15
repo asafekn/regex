@@ -25,20 +25,24 @@ evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s =
     parse (regexParser rgx) s
 
-  where
-  regexParser :: Regex -> Parser String
-  regexParser r0 = ParserConstructor f
-    where
-    f :: String -> [(String, String)]
-    f str = concat $ fmap (run r0) (tails str)
 
-  run :: Regex -> String -> [(String, String)]
-  run regex str =
+regexParser :: Regex -> Parser String
+regexParser r0 = ParserConstructor f
+  where
+  f :: String -> [(String, String)]
+  f str =
+    case tails str of
+      x : xs -> (run True r0 x) <> (concat $ fmap (run False r0) xs)
+      [] -> error "Impossible"
+
+
+  run :: Bool -> Regex -> String -> [(String, String)]
+  run isStart regex str =
     case regex of
       MatchStart ->
-        case str of
-          [] -> []
-          _ : _ -> [("" , str)]
+        if isStart
+        then [("" , str)]
+        else []
 
       MatchEnd ->
         case str of
@@ -54,23 +58,26 @@ evaluate rgx s =
             else []
 
       And x y -> do
-        (r1, str') <- run x str
-        (r2, str'') <- run y str'
+        (r1, str') <- run isStart x str
+        let isStart' = isStart && r1 == ""
+        (r2, str'') <- run isStart' y str'
         return (r1 <> r2, str'')
 
       Plus x -> do
-        (r, str') <- run x str
-        (rs, str'') <- zeroOrMore x str'
+        (r, str') <- run isStart x str
+        let isStart' = isStart && r == ""
+        (rs, str'') <- zeroOrMore isStart' x str'
         return (r <> rs, str'')
 
       Asterisk x ->
-        zeroOrMore x str
+        zeroOrMore isStart x str
 
-  zeroOrMore :: Regex -> String -> [(String, String)]
-  zeroOrMore r str = more <> zero
+  zeroOrMore :: Bool -> Regex -> String -> [(String, String)]
+  zeroOrMore isStart r str = more <> zero
     where
     zero = [("", str)]
     more = do
-      (x, str') <- run r str
-      (y, str'') <- zeroOrMore r str'
+      (x, str') <- run isStart r str
+      let isStart' = isStart && x == ""
+      (y, str'') <- zeroOrMore isStart' r str'
       return (x <> y, str'')
