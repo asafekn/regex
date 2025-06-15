@@ -12,25 +12,34 @@ parse (ParserConstructor f) str =
     (x, _) : _ -> Just x
 
 data Regex
-  = MatchEnd        -- '$'
+  = MatchStart      -- '^'
+  | MatchEnd        -- '$'
   | MatchChar Char  -- 'a'
   | And Regex Regex -- "aa"
   | Plus Regex      -- '+'
   | Asterisk Regex  -- '*'
-  | MatchStart      -- '^'
 
 type Match = String
 
 evaluate :: Regex -> String -> Maybe Match
-evaluate regex str =
-  asum $ fmap (parse (regexParser regex)) $ tails str
+evaluate rgx s =
+    parse (regexParser rgx) s
 
-regexParser :: Regex -> Parser String
-regexParser r0 = ParserConstructor (run r0)
   where
+  regexParser :: Regex -> Parser String
+  regexParser r0 = ParserConstructor f
+    where
+    f :: String -> [(String, String)]
+    f str = concat $ fmap (run r0) (tails str)
+
   run :: Regex -> String -> [(String, String)]
   run regex str =
     case regex of
+      MatchStart ->
+        case str of
+          [] -> []
+          _ : _ -> [("" , str)]
+
       MatchEnd ->
         case str of
           [] -> [("" , "")]
