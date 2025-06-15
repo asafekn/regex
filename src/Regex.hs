@@ -25,6 +25,16 @@ evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s =
     parse (regexParser rgx) s
 
+-- No parenthesis for now.
+--
+-- compile "^a$" == And MatchStart (And (MatchChar 'a') MatchEnd)
+-- compile "^" == MatchStart
+-- compile "$" == MatchEnd
+-- compile "a+" == Plus (MatchChar 'a')
+-- compile "a*" == Asterisk (MatchChar 'a')
+-- compile "aba*d+" == ....
+compile :: String -> Regex
+compile = undefined
 
 regexParser :: Regex -> Parser String
 regexParser r0 = ParserConstructor f
