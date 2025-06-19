@@ -27,6 +27,15 @@ main = hspec $ do
     it "MatchStart does not match after the start" $
       evaluate (And MatchStart (MatchChar 'a')) "ba" `shouldBe` Nothing
 
+    describe "compile" $ do
+      it "MatchStart" $
+        compile "^" `shouldBe` MatchStart
+--     compile "^a$" == And MatchStart (And (MatchChar 'a') MatchEnd)
+--     compile "$" == MatchEnd
+--     compile "a+" == Plus (MatchChar 'a')
+--     compile "a*" == Asterisk (MatchChar 'a')
+--     compile "aba*d+" == ....
+
 
 -- evaluate (Plus (MatchChar 'a')) "aaa"
 -- asum $ fmap (parse (regexParser (Plus (MatchChar 'a'))) $ tails "aaa"
@@ -77,9 +86,5 @@ main = hspec $ do
 --      return (['a'] <> "aa", [])
 --      return ("aaa", [])
 --  [(['a'], "aa"), ("aa", ['a']), (['a'], "aa"), ("aaa", [])]
---
---
---
---
---
+
 
