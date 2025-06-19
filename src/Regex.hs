@@ -1,6 +1,5 @@
 module Regex where
 
-import Control.Applicative (asum)
 import Data.List (tails)
 
 data Parser a = ParserConstructor (String -> [(a, String)])
@@ -18,6 +17,7 @@ data Regex
   | And Regex Regex -- "aa"
   | Plus Regex      -- '+'
   | Asterisk Regex  -- '*'
+  deriving (Show, Eq)
 
 type Match = String
 
@@ -39,15 +39,17 @@ compile str =
   case str of
     [] -> error "empty"
 
-    [c] -> replace c
+    c1 : '*' : rest -> concatRegex (Asterisk $ replace c1) rest
 
-    '^' : rest -> And MatchStart (compile rest)
+    c1 : '+' : rest -> concatRegex (Plus (replace c1)) rest
 
-    c1 : '*' : rest -> And (Asterisk (replace c1)) (compile rest)
+    c1 : rest -> concatRegex (replace c1) rest
 
-    c1 : '+' : rest -> And (Plus (replace c1)) (compile rest)
-
-    c1 : c2 : rest -> And (replace c1) (compile (c2:rest))
+concatRegex :: Regex -> String -> Regex
+concatRegex reg str =
+  case str of
+    [] -> reg
+    _ -> And reg (compile str)
 
 replace :: Char -> Regex
 replace c =
