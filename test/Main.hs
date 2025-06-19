@@ -30,7 +30,31 @@ main = hspec $ do
     describe "compile" $ do
       it "MatchStart" $
         compile "^" `shouldBe` MatchStart
---     compile "^a$" == And MatchStart (And (MatchChar 'a') MatchEnd)
+
+      it "MatchEnd" $
+        compile "$" `shouldBe` MatchEnd
+
+      it "MatchChar" $
+        compile "a" `shouldBe` MatchChar 'a'
+
+      it "multiple MatchChar" $
+        compile "aa" `shouldBe` And (MatchChar 'a') (MatchChar 'a')
+
+      it "Asterisk" $
+        compile "a*" `shouldBe` Asterisk (MatchChar 'a')
+
+      it "Plus" $
+        compile "a+" `shouldBe` Plus (MatchChar 'a')
+
+      it "everything together" $
+        compile "^aa+b*$" `shouldBe`
+          (And MatchStart $
+          And (MatchChar 'a') $
+          And (Plus (MatchChar 'a')) $
+          And (Asterisk (MatchChar 'b'))
+          MatchEnd)
+
+
 --     compile "$" == MatchEnd
 --     compile "a+" == Plus (MatchChar 'a')
 --     compile "a*" == Asterisk (MatchChar 'a')
