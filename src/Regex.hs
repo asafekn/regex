@@ -33,8 +33,29 @@ evaluate rgx s =
 -- compile "a+" == Plus (MatchChar 'a')
 -- compile "a*" == Asterisk (MatchChar 'a')
 -- compile "aba*d+" == ....
+
 compile :: String -> Regex
-compile = undefined
+compile str =
+  case str of
+    [] -> error "empty"
+
+    [c] -> replace c
+
+    '^' : rest -> And MatchStart (compile rest)
+
+    c1 : '*' : rest -> And (Asterisk (replace c1)) (compile rest)
+
+    c1 : '+' : rest -> And (Plus (replace c1)) (compile rest)
+
+    c1 : c2 : rest -> And (replace c1) (compile (c2:rest))
+
+replace :: Char -> Regex
+replace c =
+  case c of
+    '^' -> MatchStart
+    '$' -> MatchEnd
+    _   -> MatchChar c
+
 
 regexParser :: Regex -> Parser String
 regexParser r0 = ParserConstructor f
