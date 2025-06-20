@@ -27,6 +27,12 @@ main = hspec $ do
     it "MatchStart does not match after the start" $
       evaluate (And MatchStart (MatchChar 'a')) "ba" `shouldBe` Nothing
 
+    it "matches any character" $
+      evaluate AnyChar "x" `shouldBe` Just "x"
+
+    it "matches any character between other characters" $
+      evaluate (And (MatchChar 'a') (And AnyChar (MatchChar 'b'))) "axb" `shouldBe` Just "axb"
+
     describe "compile" $ do
       it "MatchStart" $
         compile "^" `shouldBe` MatchStart
@@ -36,6 +42,9 @@ main = hspec $ do
 
       it "MatchChar" $
         compile "a" `shouldBe` MatchChar 'a'
+
+      it "AnyChar" $
+        compile "." `shouldBe` AnyChar
 
       it "multiple MatchChar" $
         compile "aa" `shouldBe` And (MatchChar 'a') (MatchChar 'a')

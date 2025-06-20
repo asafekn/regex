@@ -17,6 +17,7 @@ data Regex
   | And Regex Regex -- "aa"
   | Plus Regex      -- '+'
   | Asterisk Regex  -- '*'
+  | AnyChar         -- '.'
   deriving (Show, Eq)
 
 type Match = String
@@ -56,6 +57,7 @@ replace c =
   case c of
     '^' -> MatchStart
     '$' -> MatchEnd
+    '.' -> AnyChar
     _   -> MatchChar c
 
 
@@ -89,6 +91,11 @@ regexParser r0 = ParserConstructor f
             if x == c
             then [ ([x], xs) ]
             else []
+
+      AnyChar ->
+      	case str of
+	  [] -> []
+	  x : xs -> [([x], xs)]
 
       And x y -> do
         (r1, str') <- run isStart x str
