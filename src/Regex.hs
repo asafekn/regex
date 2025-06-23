@@ -26,25 +26,29 @@ evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s =
     parse (regexParser rgx) s
 
--- No parenthesis for now.
---
--- compile "^a$" == And MatchStart (And (MatchChar 'a') MatchEnd)
--- compile "^" == MatchStart
--- compile "$" == MatchEnd
--- compile "a+" == Plus (MatchChar 'a')
--- compile "a*" == Asterisk (MatchChar 'a')
--- compile "aba*d+" == ....
-
 compile :: String -> Regex
 compile str =
   case str of
     [] -> error "empty"
 
-    c1 : '*' : rest -> concatRegex (Asterisk $ replace c1) rest
+    '\' : c : rest -> concatRegex (specialCharCompile c) rest
 
-    c1 : '+' : rest -> concatRegex (Plus (replace c1)) rest
+    c : '*' : rest -> concatRegex (Asterisk $ replace c) rest
 
-    c1 : rest -> concatRegex (replace c1) rest
+    c : '+' : rest -> concatRegex (Plus (replace c)) rest
+
+    c : rest -> concatRegex (replace c) rest
+
+specialCharCompile :: Char -> Regex
+specialCharCompile c =
+  case c of
+    '*' -> MatchChar c
+    '+' -> MatchChar c
+    '^' -> MatchChar c
+    '$' -> MatchChar c
+    '.' -> MatchChar c
+    '\' -> MatchChar c
+    _ -> error "Syntax error"
 
 concatRegex :: Regex -> String -> Regex
 concatRegex reg str =
@@ -58,6 +62,7 @@ replace c =
     '^' -> MatchStart
     '$' -> MatchEnd
     '.' -> AnyChar
+    '\' -> error "Syntaxe error"
     _   -> MatchChar c
 
 
