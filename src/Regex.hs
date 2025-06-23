@@ -1,11 +1,13 @@
+{-# LANGUAGE InstanceSigs #-}
 module Regex where
 
 import Data.List (tails)
 import Prelude hiding (lex)
+import Control.Applicative (Alternative, (<|>), empty)
 
-data Parser a = ParserConstructor (String -> [(a, String)])
+data SParser a = ParserConstructor (String -> [(a, String)])
 
-parse :: Parser a -> String -> Maybe a
+parse :: SParser a -> String -> Maybe a
 parse (ParserConstructor f) str =
   case f str of
     [] -> Nothing
@@ -67,46 +69,10 @@ replace c =
     _   -> MatchChar c
 
 -- ============================================
--- Lexing
--- ============================================
---
---  Compilador
---
---  read              File -> Text
---  lex               Text -> Tokens
---  parse             Tokens -> Abstract Syntax Tree (AST)
---  type-checking     AST -> AST (enriched)
---  optimisations     AST -> AST
---  compilation       AST -> Low level code
---  code generation   Low level code -> Machine code
-
-data Token
-  = Token Char
-  | TokenAsterisk
-  | TokenDollar
-  | TokenCaret
-  | TokenPlus
-  | TokenDot
-  | TokenQuestionMark
-
-lex :: String -> [Token]
-lex xs =
-  case xs of
-    [] -> []
-    '*' : rest -> TokenAsterisk : lex rest
-    '$' : rest -> TokenDollar : lex rest
-    '^' : rest -> TokenCaret : lex rest
-    '+' : rest -> TokenPlus : lex rest
-    '.' : rest -> TokenDot : lex rest
-    '?' : rest -> TokenQuestionMark : lex rest
-    '\\' : c : rest -> Token c : lex rest
-    c : rest -> Token c : lex rest
-
--- ============================================
 -- Matching
 -- ============================================
 
-matchParser :: Regex -> Parser String
+matchParser :: Regex -> SParser String
 matchParser r0 = ParserConstructor f
   where
   f :: String -> [(String, String)]
@@ -166,3 +132,96 @@ matchParser r0 = ParserConstructor f
       let isStart' = isStart && x == ""
       (y, str'') <- zeroOrMore isStart' r str'
       return (x <> y, str'')
+
+-- ============================================
+-- New approach
+-- ============================================
+--  Compilador
+--
+--  read              File -> Text
+--  lex               Text -> Tokens
+--  parse             Tokens -> Abstract Syntax Tree (AST)
+--  type-checking     AST -> AST (enriched)
+--  optimisations     AST -> AST
+--  compilation       AST -> Low level code
+--  code generation   Low level code -> Machine code
+
+-- ============================================
+-- Lexing
+-- ============================================
+
+data Token
+  = Token Char
+  | TokenAsterisk
+  | TokenDollar
+  | TokenCaret
+  | TokenPlus
+  | TokenDot
+  | TokenQuestionMark
+
+lex :: String -> [Token]
+lex xs =
+  case xs of
+    [] -> []
+    '*' : rest -> TokenAsterisk : lex rest
+    '$' : rest -> TokenDollar : lex rest
+    '^' : rest -> TokenCaret : lex rest
+    '+' : rest -> TokenPlus : lex rest
+    '.' : rest -> TokenDot : lex rest
+    '?' : rest -> TokenQuestionMark : lex rest
+    '\\' : c : rest -> Token c : lex rest
+    c : rest -> Token c : lex rest
+
+-- ============================================
+-- Parsing
+-- ============================================
+
+data Parser a = Parser ([Token] -> [(a, [Token])])
+
+instance Semigroup a => Semigroup (Parser a) where
+  (<>) :: Parser a -> Parser a -> Parser a
+  (Parser f) <> (Parser g) =
+    Parser $ \tokens -> do
+      (r1, rest1) <- f tokens
+      (r2, rest2) <- g rest1
+      return (r1 <> r2, rest2)
+
+instance Monoid a => Monoid (Parser a) where
+  mempty :: Parser a
+  mempty = Parser $ \tokens -> [(mempty, tokens)]
+
+  mappend :: Parser a -> Parser a -> Parser a
+  mappend = (<>)
+
+instance Functor Parser where
+  fmap :: (a -> b) -> Parser a -> Parser b
+  fmap f (Parser g) = Parser $ \tokens -> do
+    (r, rest) <- g tokens
+    return (f r, rest)
+
+instance Applicative Parser where
+  (<*>) :: Parser (a -> b) -> Parser a -> Parser b
+  (Parser f) <*> (Parser g) = Parser $ \tokens -> do
+    (f', rest1) <- f tokens
+    (a, rest2) <- g rest1
+    return (f' a, rest2)
+
+  pure :: a -> Parser a
+  pure x = Parser $ \tokens -> [(x, tokens)]
+
+instance Alternative Parser where
+  (<|>) :: Parser a -> Parser a -> Parser a
+  (Parser f) <|> (Parser g) = Parser $ \tokens ->
+    case f tokens of
+      [] -> g tokens
+      xs -> xs
+
+  empty :: Parser a
+  empty = Parser $ \_ -> []
+
+instance Monad Parser where
+  (>>=) :: Parser a -> (a -> Parser b) -> Parser b
+  (Parser f) >>= g = Parser $ \tokens -> do
+    (r, rest) <- f tokens
+    let (Parser h) = g r
+    h rest
