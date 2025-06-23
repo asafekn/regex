@@ -1,6 +1,7 @@
 module Regex where
 
 import Data.List (tails)
+import Prelude hiding (lex)
 
 data Parser a = ParserConstructor (String -> [(a, String)])
 
@@ -24,14 +25,14 @@ type Match = String
 
 evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s =
-    parse (regexParser rgx) s
+    parse (matchParser rgx) s
 
 compile :: String -> Regex
 compile str =
   case str of
     [] -> error "empty"
 
-    '\' : c : rest -> concatRegex (specialCharCompile c) rest
+    '\\' : c : rest -> concatRegex (specialCharCompile c) rest
 
     c : '*' : rest -> concatRegex (Asterisk $ replace c) rest
 
@@ -47,7 +48,7 @@ specialCharCompile c =
     '^' -> MatchChar c
     '$' -> MatchChar c
     '.' -> MatchChar c
-    '\' -> MatchChar c
+    '\\' -> MatchChar c
     _ -> error "Syntax error"
 
 concatRegex :: Regex -> String -> Regex
@@ -62,12 +63,51 @@ replace c =
     '^' -> MatchStart
     '$' -> MatchEnd
     '.' -> AnyChar
-    '\' -> error "Syntaxe error"
+    '\\' -> error "Syntaxe error"
     _   -> MatchChar c
 
+-- ============================================
+-- Lexing
+-- ============================================
+--
+--  Compilador
+--
+--  read              File -> Text
+--  lex               Text -> Tokens
+--  parse             Tokens -> Abstract Syntax Tree (AST)
+--  type-checking     AST -> AST (enriched)
+--  optimisations     AST -> AST
+--  compilation       AST -> Low level code
+--  code generation   Low level code -> Machine code
 
-regexParser :: Regex -> Parser String
-regexParser r0 = ParserConstructor f
+data Token
+  = Token Char
+  | TokenAsterisk
+  | TokenDollar
+  | TokenCaret
+  | TokenPlus
+  | TokenDot
+  | TokenQuestionMark
+
+lex :: String -> [Token]
+lex xs =
+  case xs of
+    [] -> []
+    '*' : rest -> TokenAsterisk : lex rest
+    '$' : rest -> TokenDollar : lex rest
+    '^' : rest -> TokenCaret : lex rest
+    '+' : rest -> TokenPlus : lex rest
+    '.' : rest -> TokenDot : lex rest
+    '?' : rest -> TokenQuestionMark : lex rest
+    '\\' : c : rest -> Token c : lex rest
+    c : rest -> Token c : lex rest
+
+-- ============================================
+-- Matching
+-- ============================================
+
+matchParser :: Regex -> Parser String
+matchParser r0 = ParserConstructor f
   where
   f :: String -> [(String, String)]
   f str =
