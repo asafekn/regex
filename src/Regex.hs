@@ -3,12 +3,12 @@ module Regex where
 
 import Data.List (tails)
 import Prelude hiding (lex)
-import Control.Applicative (Alternative, (<|>), empty)
+import Control.Applicative (Alternative, (<|>), empty, many)
 
 data SParser a = ParserConstructor (String -> [(a, String)])
 
-parse :: SParser a -> String -> Maybe a
-parse (ParserConstructor f) str =
+parseS :: SParser a -> String -> Maybe a
+parseS (ParserConstructor f) str =
   case f str of
     [] -> Nothing
     (x, _) : _ -> Just x
@@ -20,14 +20,15 @@ data Regex
   | And Regex Regex -- "aa"
   | Plus Regex      -- '+'
   | Asterisk Regex  -- '*'
-  | AnyChar         -- '.'
+  | Question Regex  -- '?'
+  | MatchAny        -- '.'
   deriving (Show, Eq)
 
 type Match = String
 
 evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s =
-    parse (matchParser rgx) s
+    parseS (matchParser rgx) s
 
 compile :: String -> Regex
 compile str =
@@ -64,7 +65,7 @@ replace c =
   case c of
     '^' -> MatchStart
     '$' -> MatchEnd
-    '.' -> AnyChar
+    '.' -> MatchAny
     '\\' -> error "Syntaxe error"
     _   -> MatchChar c
 
@@ -103,10 +104,10 @@ matchParser r0 = ParserConstructor f
             then [ ([x], xs) ]
             else []
 
-      AnyChar ->
-      	case str of
-	  [] -> []
-	  x : xs -> [([x], xs)]
+      MatchAny ->
+        case str of
+          [] -> []
+          x : xs -> [([x], xs)]
 
       And x y -> do
         (r1, str') <- run isStart x str
@@ -152,12 +153,15 @@ matchParser r0 = ParserConstructor f
 
 data Token
   = Token Char
+  | TokenPlus
   | TokenAsterisk
+  | TokenQuestionMark
   | TokenDollar
   | TokenCaret
-  | TokenPlus
   | TokenDot
-  | TokenQuestionMark
+  | TokenParenthesisOpen
+  | TokenParenthesisClose
+  deriving (Show, Eq)
 
 lex :: String -> [Token]
 lex xs =
@@ -169,6 +173,8 @@ lex xs =
     '+' : rest -> TokenPlus : lex rest
     '.' : rest -> TokenDot : lex rest
     '?' : rest -> TokenQuestionMark : lex rest
+    '(' : rest -> TokenParenthesisOpen: lex rest
+    ')' : rest -> TokenParenthesisClose : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
@@ -176,7 +182,14 @@ lex xs =
 -- Parsing
 -- ============================================
 
-data Parser a = Parser ([Token] -> [(a, [Token])])
+data Parser a = Parser { parseTokens :: [Token] -> [(a, [Token])] }
+
+parse :: Parser a -> [Token] -> Maybe a
+parse (Parser f) tokens =
+  case f tokens of
+    [] -> Nothing
+    [(r,_)] -> Just r
+    _ -> error "ambiguous parse"
 
 instance Semigroup a => Semigroup (Parser a) where
   (<>) :: Parser a -> Parser a -> Parser a
@@ -201,19 +214,19 @@ instance Functor Parser where
 
 instance Applicative Parser where
   (<*>) :: Parser (a -> b) -> Parser a -> Parser b
-  (Parser f) <*> (Parser g) = Parser $ \tokens -> do
-    (f', rest1) <- f tokens
-    (a, rest2) <- g rest1
-    return (f' a, rest2)
+  f <*> g = Parser $ \tokens -> do
+    (f', rest1) <- parseTokens f tokens
+    (a, rest2) <- parseTokens g rest1
+    pure (f' a, rest2)
 
   pure :: a -> Parser a
   pure x = Parser $ \tokens -> [(x, tokens)]
 
 instance Alternative Parser where
   (<|>) :: Parser a -> Parser a -> Parser a
-  (Parser f) <|> (Parser g) = Parser $ \tokens ->
-    case f tokens of
-      [] -> g tokens
+  f <|> g = Parser $ \tokens ->
+    case parseTokens f tokens of
+      [] -> parseTokens g tokens
       xs -> xs
 
   empty :: Parser a
@@ -223,5 +236,51 @@ instance Monad Parser where
   (>>=) :: Parser a -> (a -> Parser b) -> Parser b
   (Parser f) >>= g = Parser $ \tokens -> do
     (r, rest) <- f tokens
-    let (Parser h) = g r
-    h rest
+    parseTokens (g r) rest
+
+instance MonadFail Parser where
+  fail _ = Parser $ \_ -> []
+
+regexParser :: Parser Regex
+regexParser = parseAnds
+
+chomp :: Parser Token
+chomp = Parser $ \tokens ->
+  case tokens of
+    [] -> []
+    x : xs -> [(x, xs)]
+
+parseAnds :: Parser Regex
+parseAnds = do
+  rs <- many parseWithPostfix
+  case rs of
+    [] -> empty
+    [x] -> pure x
+    x : xs -> pure $ foldr (flip And) x xs
+
+parseWithPostfix :: Parser Regex
+parseWithPostfix = do
+  r <- parseBlock
+  postfixFor r <|> pure r
+  where
+    postfixFor regex = do
+      token <- chomp
+      case token of
+        TokenPlus -> pure (Plus regex)
+        TokenAsterisk -> pure (Asterisk regex)
+        TokenQuestionMark -> pure (Question regex)
+        _ -> empty
+
+parseBlock :: Parser Regex
+parseBlock = do
+  token <- chomp
+  case token of
+    TokenCaret -> pure MatchStart
+    Token chr -> pure (MatchChar chr)
+    TokenDollar -> pure MatchEnd
+    TokenDot -> pure MatchAny
+    TokenParenthesisOpen -> do
+      r <- parseAnds
+      TokenParenthesisClose <- chomp
+      pure r
+    _ -> empty
