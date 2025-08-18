@@ -61,11 +61,7 @@ main = hspec $ do
 
       it "everything together" $
         compile "^aa+b*$" `shouldBe`
-          (And MatchStart $
-          And (MatchChar 'a') $
-          And (Plus (MatchChar 'a')) $
-          And (Asterisk (MatchChar 'b'))
-          MatchEnd)
+          (And (And (And (And MatchStart (MatchChar 'a')) (Plus (MatchChar 'a'))) (Asterisk (MatchChar 'b'))) MatchEnd)
 
     describe "run" $ do
       it "matches one character at the beginning" $
@@ -118,6 +114,12 @@ main = hspec $ do
 
       it "Question mark matches zero times" $
         evaluate (compile "a?") "b" `shouldBe` Just ""
+
+      it "Test brackets" $
+        evaluate (compile "c(ab)+") "ccabab" `shouldBe` Just "cabab"
+
+      it "Test escaping" $
+        evaluate (compile "a\\?b") "ca?bc" `shouldBe` Just "a?b"
 
 
 
