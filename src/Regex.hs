@@ -32,42 +32,9 @@ evaluate rgx s =
 
 compile :: String -> Regex
 compile str =
-  case str of
-    [] -> error "empty"
-
-    '\\' : c : rest -> concatRegex (specialCharCompile c) rest
-
-    c : '*' : rest -> concatRegex (Asterisk $ replace c) rest
-
-    c : '+' : rest -> concatRegex (Plus (replace c)) rest
-
-    c : rest -> concatRegex (replace c) rest
-
-specialCharCompile :: Char -> Regex
-specialCharCompile c =
-  case c of
-    '*' -> MatchChar c
-    '+' -> MatchChar c
-    '^' -> MatchChar c
-    '$' -> MatchChar c
-    '.' -> MatchChar c
-    '\\' -> MatchChar c
-    _ -> error "Syntax error"
-
-concatRegex :: Regex -> String -> Regex
-concatRegex reg str =
-  case str of
-    [] -> reg
-    _ -> And reg (compile str)
-
-replace :: Char -> Regex
-replace c =
-  case c of
-    '^' -> MatchStart
-    '$' -> MatchEnd
-    '.' -> MatchAny
-    '\\' -> error "Syntaxe error"
-    _   -> MatchChar c
+  case parse regexParser (lex str) of
+    Nothing -> error "Invalid regex"
+    Just r -> r
 
 -- ============================================
 -- Matching
@@ -265,7 +232,7 @@ parseAnds = do
   case rs of
     [] -> empty
     [x] -> pure x
-    x : xs -> pure $ foldr (flip And) x xs
+    x : xs -> pure $ foldl' And x xs
 
 parseWithPostfix :: Parser Regex
 parseWithPostfix = do
