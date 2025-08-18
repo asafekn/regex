@@ -124,6 +124,9 @@ matchParser r0 = ParserConstructor f
       Asterisk x ->
         zeroOrMore isStart x str
 
+      Question x ->
+        zeroOrOne isStart x str
+
   zeroOrMore :: Bool -> Regex -> String -> [(String, String)]
   zeroOrMore isStart r str = more <> zero
     where
@@ -133,6 +136,12 @@ matchParser r0 = ParserConstructor f
       let isStart' = isStart && x == ""
       (y, str'') <- zeroOrMore isStart' r str'
       return (x <> y, str'')
+
+  zeroOrOne :: Bool -> Regex -> String -> [(String, String)]
+  zeroOrOne isStart r str = one <> zero
+    where
+    zero = [("", str)]
+    one = run isStart r str
 
 -- ============================================
 -- New approach

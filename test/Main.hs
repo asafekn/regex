@@ -6,32 +6,33 @@ import Regex
 main :: IO ()
 main = hspec $ do
   describe "regex" $ do
-    it "matches one character at the beginning" $
-      evaluate (MatchChar 'a') "a" `shouldBe` Just "a"
+    describe "evaluate" $ do
+      it "matches one character at the beginning" $
+        evaluate (MatchChar 'a') "a" `shouldBe` Just "a"
 
-    it "matches one character anywhere in the string" $
-      evaluate (MatchChar 'a') "bac" `shouldBe` Just "a"
+      it "matches one character anywhere in the string" $
+        evaluate (MatchChar 'a') "bac" `shouldBe` Just "a"
 
-    it "Plus matches once" $
-      evaluate (Plus (MatchChar 'a')) "a" `shouldBe` Just "a"
+      it "Plus matches once" $
+        evaluate (Plus (MatchChar 'a')) "a" `shouldBe` Just "a"
 
-    it "Plus matches more than once" $
-      evaluate (Plus (MatchChar 'a')) "aaa" `shouldBe` Just "aaa"
+      it "Plus matches more than once" $
+        evaluate (Plus (MatchChar 'a')) "aaa" `shouldBe` Just "aaa"
 
-    it "Plus does not match zero times" $
-      evaluate (Plus (MatchChar 'a')) "b" `shouldBe` Nothing
+      it "Plus does not match zero times" $
+        evaluate (Plus (MatchChar 'a')) "b" `shouldBe` Nothing
 
-    it "Matches from the start" $
-      evaluate (And MatchStart (MatchChar 'a')) "ab" `shouldBe` Just "a"
+      it "Matches from the start" $
+        evaluate (And MatchStart (MatchChar 'a')) "ab" `shouldBe` Just "a"
 
-    it "MatchStart does not match after the start" $
-      evaluate (And MatchStart (MatchChar 'a')) "ba" `shouldBe` Nothing
+      it "MatchStart does not match after the start" $
+        evaluate (And MatchStart (MatchChar 'a')) "ba" `shouldBe` Nothing
 
-    it "matches any character" $
-      evaluate AnyChar "x" `shouldBe` Just "x"
+      it "matches any character" $
+        evaluate MatchAny "x" `shouldBe` Just "x"
 
-    it "matches any character between other characters" $
-      evaluate (And (MatchChar 'a') (And AnyChar (MatchChar 'b'))) "axb" `shouldBe` Just "axb"
+      it "matches any character between other characters" $
+        evaluate (And (MatchChar 'a') (And MatchAny (MatchChar 'b'))) "axb" `shouldBe` Just "axb"
 
     describe "compile" $ do
       it "MatchStart" $
@@ -43,8 +44,8 @@ main = hspec $ do
       it "MatchChar" $
         compile "a" `shouldBe` MatchChar 'a'
 
-      it "AnyChar" $
-        compile "." `shouldBe` AnyChar
+      it "MatchAny" $
+        compile "." `shouldBe` MatchAny
 
       it "multiple MatchChar" $
         compile "aa" `shouldBe` And (MatchChar 'a') (MatchChar 'a')
@@ -55,6 +56,9 @@ main = hspec $ do
       it "Plus" $
         compile "a+" `shouldBe` Plus (MatchChar 'a')
 
+      it "Quesstion mark" $
+        compile "a?" `shouldBe` Question (MatchChar 'a')
+
       it "everything together" $
         compile "^aa+b*$" `shouldBe`
           (And MatchStart $
@@ -62,6 +66,65 @@ main = hspec $ do
           And (Plus (MatchChar 'a')) $
           And (Asterisk (MatchChar 'b'))
           MatchEnd)
+
+    describe "run" $ do
+      it "matches one character at the beginning" $
+        evaluate (compile "a") "a" `shouldBe` Just "a"
+
+      it "matches one character anywhere in the string" $
+        evaluate (compile "a") "bac" `shouldBe` Just "a"
+
+      it "Plus matches once" $
+        evaluate (compile "a+") "a" `shouldBe` Just "a"
+
+      it "Plus matches more than once" $
+        evaluate (compile "a+") "aaa" `shouldBe` Just "aaa"
+
+      it "Plus does not match zero times" $
+        evaluate (compile "a+") "b" `shouldBe` Nothing
+
+      it "Matches from the start" $
+        evaluate (compile "^a") "ab" `shouldBe` Just "a"
+
+      it "MatchStart does not match after the start" $
+        evaluate (compile "^a") "ba" `shouldBe` Nothing
+
+      it "matches any character" $
+        evaluate (compile ".") "x" `shouldBe` Just "x"
+
+      it "matches any character between other characters" $
+        evaluate (compile "a.b") "axb" `shouldBe` Just "axb"
+
+      it "Asterisk matches once" $
+        evaluate (compile "a*") "a" `shouldBe` Just "a"
+
+      it "Asterisk matches more than once" $
+        evaluate (compile "a*") "aaa" `shouldBe` Just "aaa"
+
+      it "Asterisk matches zero times" $
+        evaluate (compile "a*") "b" `shouldBe` Just ""
+
+      it "$ matches the end" $
+        evaluate (compile "a$") "aa" `shouldBe` Just "a"
+
+      it "$ does not match if it is not the end" $
+        evaluate (compile "a$") "aab" `shouldBe` Nothing
+
+      it "Question mark matches once" $
+        evaluate (compile "a?") "a" `shouldBe` Just "a"
+
+      it "Question mark does not match more than once" $
+        evaluate (compile "a?") "aaa" `shouldBe` Just "a"
+
+      it "Question mark matches zero times" $
+        evaluate (compile "a?") "b" `shouldBe` Just ""
+
+
+
+
+
+
+
 
 
 --     compile "$" == MatchEnd
