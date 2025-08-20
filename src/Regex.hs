@@ -22,6 +22,7 @@ data Regex
   | Asterisk Regex  -- '*'
   | Question Regex  -- '?'
   | MatchAny        -- '.'
+  | Or Regex Regex  -- '|'
   deriving (Show, Eq)
 
 type Match = String
@@ -94,6 +95,11 @@ matchParser r0 = ParserConstructor f
       Question x ->
         zeroOrOne isStart x str
 
+      Or x y ->
+       case run isStart x str of
+        [] -> run isStart y str
+        r -> r
+
   zeroOrMore :: Bool -> Regex -> String -> [(String, String)]
   zeroOrMore isStart r str = more <> zero
     where
@@ -137,6 +143,8 @@ data Token
   | TokenDot
   | TokenParenthesisOpen
   | TokenParenthesisClose
+  | TokenSquareBracketsOpen
+  | TokenSquareBracketsClose
   deriving (Show, Eq)
 
 lex :: String -> [Token]
@@ -151,6 +159,8 @@ lex xs =
     '?' : rest -> TokenQuestionMark : lex rest
     '(' : rest -> TokenParenthesisOpen: lex rest
     ')' : rest -> TokenParenthesisClose : lex rest
+    '[' : rest -> TokenSquareBracketsOpen : lex rest
+    ']' : rest -> TokenSquareBracketsClose : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
