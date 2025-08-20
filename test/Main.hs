@@ -34,6 +34,16 @@ main = hspec $ do
       it "matches any character between other characters" $
         evaluate (And (MatchChar 'a') (And MatchAny (MatchChar 'b'))) "axb" `shouldBe` Just "axb"
 
+      it "Or matches first alternative" $
+        evaluate (Or (MatchChar 'a') (MatchChar 'b')) "ac" `shouldBe` Just "a"
+
+      it "Or matches second alternative" $
+        evaluate (Or (MatchChar 'a') (MatchChar 'b')) "bc" `shouldBe` Just "b"
+
+
+
+
+
     describe "compile" $ do
       it "MatchStart" $
         compile "^" `shouldBe` MatchStart
