@@ -40,6 +40,10 @@ main = hspec $ do
       it "Or matches second alternative" $
         evaluate (Or (MatchChar 'a') (MatchChar 'b')) "bc" `shouldBe` Just "b"
 
+      it "Or matches first alternative with two characters" $
+        evaluate (Or (and (MatchChar 'a') (MatchChar 'b')) (and (MatchChar 'x') (MatchChar 'y'))) "abc" `shouldBe` Just "ab"
+
+
 
 
 
