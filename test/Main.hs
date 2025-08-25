@@ -185,6 +185,19 @@ main = hspec $ do
         compile "^aa+b*$" `shouldBe`
           (And (And (And (And MatchStart (MatchChar 'a')) (Plus (MatchChar 'a'))) (Asterisk (MatchChar 'b'))) MatchEnd)
 
+      it "Or" $
+        compile "a|b" `shouldBe` Or (MatchChar 'a') (MatchChar 'b')
+
+      it "Or with more alternatives" $
+        compile "a|b|c" `shouldBe` Or (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
+
+      it "Or with Ands" $
+        compile "ab|cd" `shouldBe` Or (And (MatchChar 'a') (MatchChar 'b')) (And (MatchChar 'c') (MatchChar 'd'))
+
+      it "Or with parentesis" $
+        compile "(a|b)c" `shouldBe` And (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
+
+
     describe "run" $ do
       it "matches one character at the beginning" $
         evaluate (compile "a") "a" `shouldBe` Just "a"

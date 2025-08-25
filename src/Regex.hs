@@ -79,6 +79,7 @@ matchParser r0 = ParserConstructor f
 
       And x y -> do
         (r1, str') <- run isStart x str
+
         let isStart' = isStart && r1 == ""
         (r2, str'') <- run isStart' y str'
         return (r1 <> r2, str'')
@@ -86,6 +87,7 @@ matchParser r0 = ParserConstructor f
       Plus x -> do
         (r, str') <- run isStart x str
         let isStart' = isStart && r == ""
+
         (rs, str'') <- zeroOrMore isStart' x str'
         return (r <> rs, str'')
 
@@ -253,6 +255,7 @@ data Token
   | TokenParenthesisClose
   | TokenSquareBracketsOpen
   | TokenSquareBracketsClose
+  | TokenOr
   deriving (Show, Eq)
 
 lex :: String -> [Token]
@@ -269,6 +272,7 @@ lex xs =
     ')' : rest -> TokenParenthesisClose : lex rest
     '[' : rest -> TokenSquareBracketsOpen : lex rest
     ']' : rest -> TokenSquareBracketsClose : lex rest
+    '|' : rest -> TokenOr : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
@@ -336,13 +340,21 @@ instance MonadFail Parser where
   fail _ = Parser $ \_ -> []
 
 regexParser :: Parser Regex
-regexParser = parseAnds
+regexParser = parseOrs
 
 chomp :: Parser Token
 chomp = Parser $ \tokens ->
   case tokens of
     [] -> []
     x : xs -> [(x, xs)]
+
+parseOrs :: Parser Regex
+parseOrs = do
+  first <- parseAnds
+  rest <- many $ do
+    TokenOr <- chomp
+    parseAnds
+  pure $ foldl Or first rest
 
 parseAnds :: Parser Regex
 parseAnds = do
