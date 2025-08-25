@@ -41,10 +41,10 @@ main = hspec $ do
         evaluate (Or (MatchChar 'a') (MatchChar 'b')) "bc" `shouldBe` Just "b"
 
       it "Or matches first alternative with two characters" $
-        evaluate (Or (and (MatchChar 'a') (MatchChar 'b')) (and (MatchChar 'x') (MatchChar 'y'))) "abc" `shouldBe` Just "ab"
+        evaluate (Or (And (MatchChar 'a') (MatchChar 'b')) (And (MatchChar 'x') (MatchChar 'y'))) "abc" `shouldBe` Just "ab"
 
       it "Or matches second alternative with two characters" $
-        evaluate (Or (and (MatchChar 'a') (MatchChar 'b')) (and (MatchChar 'x') (MatchChar 'y'))) "xyc" `shouldBe` Just "xy"
+        evaluate (Or (And (MatchChar 'a') (MatchChar 'b')) (And (MatchChar 'x') (MatchChar 'y'))) "xyc" `shouldBe` Just "xy"
 
 
 -- Or matches first alternative with two characters
