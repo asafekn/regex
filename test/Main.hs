@@ -87,6 +87,8 @@ main = hspec $ do
       it "Or with parentesis" $
         compile "(a|b)c" `shouldBe` And (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
 
+      it "[] works" $
+        compile "[abc]" `shouldBe` Or (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
 
     describe "run" $ do
       it "matches one character at the beginning" $
@@ -157,3 +159,7 @@ main = hspec $ do
 
       it "Or with parentesis" $
         evaluate (compile "(a|b)c") "abcd" `shouldBe` Just "bc"
+
+      it "[] works" $
+        evaluate (compile "[abc^$+?*|]+") "Kabc^$+?*|K" `shouldBe` Just "abc^$+?*|"
+
