@@ -33,7 +33,7 @@ evaluate rgx s =
 
 compile :: String -> Regex
 compile str =
-  case parse regexParser (lex str) of
+  case parse parseRegex (lex str) of
     Nothing -> error "Invalid regex"
     Just r -> r
 
@@ -339,8 +339,8 @@ instance Monad Parser where
 instance MonadFail Parser where
   fail _ = Parser $ \_ -> []
 
-regexParser :: Parser Regex
-regexParser = parseOrs
+parseRegex :: Parser Regex
+parseRegex = parseOrs
 
 chomp :: Parser Token
 chomp = Parser $ \tokens ->
@@ -386,7 +386,7 @@ parseBlock = do
     TokenDollar -> pure MatchEnd
     TokenDot -> pure MatchAny
     TokenParenthesisOpen -> do
-      r <- parseAnds
+      r <- parseRegex
       TokenParenthesisClose <- chomp
       pure r
     _ -> empty
