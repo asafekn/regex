@@ -23,6 +23,7 @@ data Regex
   | Question Regex  -- '?'
   | MatchAny        -- '.'
   | Or Regex Regex  -- '|'
+  | Negation [Char] -- '[^...]
   deriving (Show, Eq)
 
 type Match = String
@@ -101,6 +102,17 @@ matchParser r0 = ParserConstructor f
        case run isStart x str of
         [] -> run isStart y str
         r -> r
+
+      Negation chars ->
+        case str of
+          [] -> []
+          x : xs ->
+            case map MatchChar chars of
+              [] -> []
+              c : cs ->
+                case run isStart (foldl' Or c cs) str of
+                  [] -> [([x], xs)]
+                  _ -> []
 
   zeroOrMore :: Bool -> Regex -> String -> [(String, String)]
   zeroOrMore isStart r str = more <> zero

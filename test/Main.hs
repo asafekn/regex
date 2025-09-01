@@ -46,6 +46,12 @@ main = hspec $ do
       it "Or matches second alternative with two characters" $
         evaluate (Or (And (MatchChar 'a') (MatchChar 'b')) (And (MatchChar 'x') (MatchChar 'y'))) "xyc" `shouldBe` Just "xy"
 
+      it "Negation does not match any of given chars" $
+        evaluate (Negation ['a','b']) "abc" `shouldBe` Just "c"
+
+      it "Negation does not match on empty string" $
+        evaluate (Negation ['a','b']) "" `shouldBe` Nothing
+
     describe "compile" $ do
       it "MatchStart" $
         compile "^" `shouldBe` MatchStart
