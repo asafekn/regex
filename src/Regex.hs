@@ -27,10 +27,16 @@ data Regex
   deriving (Show, Eq)
 
 type Match = String
+type MatchGroup = String
 
 evaluate :: Regex -> String -> Maybe Match
-evaluate rgx s =
-    parseS (matchParser rgx) s
+evaluate rgx s = fmap fst (evaluateWithMatch rgx s)
+
+evaluateWithMatch :: Regex -> String -> Maybe (Match, [MatchGroup])
+evaluateWithMatch rgx s = fmap f $ parseS (matchParser rgx) s
+  where
+  f :: Match -> (Match, [MatchGroup])
+  f match = (match, [])
 
 compile :: String -> Regex
 compile str =
