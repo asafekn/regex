@@ -289,20 +289,25 @@ parseBlock = do
     Token chr -> pure (MatchChar chr)
     TokenDollar -> pure MatchEnd
     TokenDot -> pure MatchAny
+    TokenParenthesisOpen -> do
+      r <- parseRegex
+      TokenParenthesisClose <- chomp
+      pure r
     TokenSquareBracketsOpen -> do
-      char <- chomp
-      case char of
-        TokenCaret -> do
+      let
+        negation = do
+          TokenCaret <- chomp
           chars <- many parseCharacter
-          TokenSquareBracketsClose <- chomp
           pure (Negation chars)
-        TokenSquareBracketsClose -> empty
-        Token c -> do
-          rest <- many parseCharacter
-          TokenSquareBracketsClose <- chomp
-          let regchars = map MatchChar (c : rest)
+
+        oneOfChars = do
+          c : cs <- many parseCharacter
+          let regchars = map MatchChar (c:cs)
           pure (foldl1 Or regchars)
-        _ -> empty
+
+      r <- negation <|> oneOfChars
+      TokenSquareBracketsClose <- chomp
+      return r
 
     _ -> empty
 
@@ -319,6 +324,6 @@ parseCharacter = do
     TokenDot -> pure '.'
     TokenParenthesisOpen -> pure '('
     TokenParenthesisClose -> pure ')'
-    TokenSquareBracketsOpen -> empty
+    TokenSquareBracketsOpen -> pure '['
     TokenSquareBracketsClose -> empty
     TokenOr -> pure '|'
