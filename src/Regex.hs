@@ -24,6 +24,7 @@ data Regex
   | MatchAny        -- '.'
   | Or Regex Regex  -- '|'
   | Negation [Char] -- '[^...]
+  | Group Regex     -- '(...)'
   deriving (Show, Eq)
 
 type Match = String
@@ -117,6 +118,10 @@ matchParser r0 = ParserConstructor f
                 case run isStart (foldl' Or c cs) str of
                   [] -> [(([x], []), xs)]
                   _ -> []
+
+      Group r -> do
+        ((x, g), rest) <- run isStart r str
+        return ((x, x : g), rest)
 
   zeroOrMore :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrMore isStart r str = more <> zero
@@ -296,7 +301,7 @@ parseBlock = do
     TokenParenthesisOpen -> do
       r <- parseRegex
       TokenParenthesisClose <- chomp
-      pure r
+      pure (Group r)
     TokenSquareBracketsOpen -> do
       let
         negation = do
