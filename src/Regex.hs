@@ -28,15 +28,13 @@ data Regex
 
 type Match = String
 type MatchGroup = String
+type Remaining = String
 
 evaluate :: Regex -> String -> Maybe Match
 evaluate rgx s = fmap fst (evaluateWithMatch rgx s)
 
 evaluateWithMatch :: Regex -> String -> Maybe (Match, [MatchGroup])
-evaluateWithMatch rgx s = fmap f $ parseS (matchParser rgx) s
-  where
-  f :: Match -> (Match, [MatchGroup])
-  f match = (match, [])
+evaluateWithMatch rgx s = parseS (matchParser rgx) s
 
 compile :: String -> Regex
 compile str =
@@ -48,27 +46,27 @@ compile str =
 -- Matching
 -- ============================================
 
-matchParser :: Regex -> SParser String
+matchParser :: Regex -> SParser (Match, [MatchGroup])
 matchParser r0 = ParserConstructor f
   where
-  f :: String -> [(String, String)]
+  f :: String -> [((Match, [MatchGroup]), Remaining)]
   f str =
     case tails str of
       x : xs -> (run True r0 x) <> (concat $ fmap (run False r0) xs)
       [] -> error "Impossible"
 
 
-  run :: Bool -> Regex -> String -> [(String, String)]
+  run :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   run isStart regex str =
     case regex of
       MatchStart ->
         if isStart
-        then [("" , str)]
+        then [(mempty, str)]
         else []
 
       MatchEnd ->
         case str of
-          [] -> [("" , "")]
+          [] -> [mempty]
           _ :_ -> []
 
       MatchChar c ->
@@ -76,24 +74,24 @@ matchParser r0 = ParserConstructor f
           [] -> []
           x : xs ->
             if x == c
-            then [ ([x], xs) ]
+            then [(([x], []), xs)]
             else []
 
       MatchAny ->
         case str of
           [] -> []
-          x : xs -> [([x], xs)]
+          x : xs -> [(([x], []), xs)]
 
       And x y -> do
         (r1, str') <- run isStart x str
 
-        let isStart' = isStart && r1 == ""
+        let isStart' = isStart && fst r1 == ""
         (r2, str'') <- run isStart' y str'
         return (r1 <> r2, str'')
 
       Plus x -> do
         (r, str') <- run isStart x str
-        let isStart' = isStart && r == ""
+        let isStart' = isStart && fst r == ""
 
         (rs, str'') <- zeroOrMore isStart' x str'
         return (r <> rs, str'')
@@ -117,23 +115,23 @@ matchParser r0 = ParserConstructor f
               [] -> []
               c : cs ->
                 case run isStart (foldl' Or c cs) str of
-                  [] -> [([x], xs)]
+                  [] -> [(([x], []), xs)]
                   _ -> []
 
-  zeroOrMore :: Bool -> Regex -> String -> [(String, String)]
+  zeroOrMore :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrMore isStart r str = more <> zero
     where
-    zero = [("", str)]
+    zero = [(mempty, str)]
     more = do
       (x, str') <- run isStart r str
-      let isStart' = isStart && x == ""
+      let isStart' = isStart && fst x == ""
       (y, str'') <- zeroOrMore isStart' r str'
       return (x <> y, str'')
 
-  zeroOrOne :: Bool -> Regex -> String -> [(String, String)]
+  zeroOrOne :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrOne isStart r str = one <> zero
     where
-    zero = [("", str)]
+    zero = [(mempty, str)]
     one = run isStart r str
 
 -- ============================================
