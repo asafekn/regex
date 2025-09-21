@@ -91,7 +91,7 @@ main = hspec $ do
         compile "ab|cd" `shouldBe` Or (And (MatchChar 'a') (MatchChar 'b')) (And (MatchChar 'c') (MatchChar 'd'))
 
       it "Or with parentesis" $
-        compile "(a|b)c" `shouldBe` And (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
+        compile "(a|b)c" `shouldBe` And (Group (Or (MatchChar 'a') (MatchChar 'b'))) (MatchChar 'c')
 
       it "[] works" $
         compile "[abc]" `shouldBe` Or (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
