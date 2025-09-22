@@ -14,17 +14,18 @@ parseS (ParserConstructor f) str =
     (x, _) : _ -> Just x
 
 data Regex
-  = MatchStart      -- '^'
-  | MatchEnd        -- '$'
-  | MatchChar Char  -- 'a'
-  | And Regex Regex -- "aa"
-  | Plus Regex      -- '+'
-  | Asterisk Regex  -- '*'
-  | Question Regex  -- '?'
-  | MatchAny        -- '.'
-  | Or Regex Regex  -- '|'
-  | Negation [Char] -- '[^...]
-  | Group Regex     -- '(...)'
+  = MatchStart                      -- '^'
+  | MatchEnd                        -- '$'
+  | MatchChar Char                  -- 'a'
+  | And Regex Regex                 -- "aa"
+  | Plus Regex                      -- '+'
+  | Asterisk Regex                  -- '*'
+  | Question Regex                  -- '?'
+  | MatchAny                        -- '.'
+  | Or Regex Regex                  -- '|'
+  | Negation [Char]                 -- '[^...]
+  | Group Regex                     -- '(...)'
+  | Quantified (Int, Int) Regex     -- '{1,2}
   deriving (Show, Eq)
 
 type Match = String
@@ -122,6 +123,18 @@ matchParser r0 = ParserConstructor f
       Group r -> do
         ((x, g), rest) <- run isStart r str
         return ((x, x : g), rest)
+
+      Quantified x y ->
+        fixedQuantification isStart str x y
+
+-- Quantified (MatchChar 'c') [1,3]
+-- (MatchChar 'c') [1,3]
+-- (MatchChar 'c') [2]
+-- (MatchChar 'c') [,3]
+
+
+  fixedQuantification ::  Bool -> String -> Regex -> [Int] -> [((Match, [MatchGroup]), Remaining)]
+  fixedQuantification = undefined
 
   zeroOrMore :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrMore isStart r str = more <> zero
