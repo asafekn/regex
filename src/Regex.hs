@@ -125,16 +125,24 @@ matchParser r0 = ParserConstructor f
         return ((x, x : g), rest)
 
       Quantified x y ->
-        fixedQuantification isStart str x y
+        fixedQuantification 0 isStart str y x
 
--- Quantified (MatchChar 'c') [1,3]
--- (MatchChar 'c') [1,3]
--- (MatchChar 'c') [2]
--- (MatchChar 'c') [,3]
+  fixedQuantification :: Int -> Bool -> String -> Regex -> (Int, Int) -> [((Match, [MatchGroup]), Remaining)]
+  fixedQuantification count isStart str regex (min, max) =
+    if count == max
+      then [(mempty, str)]
+      else stop <> more
+    where
+      stop =
+        if count >= min
+          then [(mempty, str)]
+          else []
 
-
-  fixedQuantification ::  Bool -> String -> Regex -> [Int] -> [((Match, [MatchGroup]), Remaining)]
-  fixedQuantification = undefined
+      more = do
+        (x, rest) <- run isStart regex str
+        let isStart' = isStart && fst x == ""
+        (y, rest') <- fixedQuantification (count+1) isStart' rest regex (min, max)
+        return (x <> y, rest')
 
   zeroOrMore :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrMore isStart r str = more <> zero
@@ -182,6 +190,9 @@ data Token
   | TokenSquareBracketsOpen
   | TokenSquareBracketsClose
   | TokenOr
+  | TokenCurlyBracketOpen
+  | TokenCurlyBracketClose
+  | TokenComma
   deriving (Show, Eq)
 
 lex :: String -> [Token]
@@ -199,6 +210,9 @@ lex xs =
     '[' : rest -> TokenSquareBracketsOpen : lex rest
     ']' : rest -> TokenSquareBracketsClose : lex rest
     '|' : rest -> TokenOr : lex rest
+    '{' : rest -> TokenCurlyBracketOpen : lex rest
+    '}' : rest -> TokenCurlyBracketClose : lex rest
+    ',' : rest -> TikenComma : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
