@@ -128,21 +128,22 @@ matchParser r0 = ParserConstructor f
         fixedQuantification 0 isStart str y x
 
   fixedQuantification :: Int -> Bool -> String -> Regex -> (Int, Int) -> [((Match, [MatchGroup]), Remaining)]
-  fixedQuantification count isStart str regex (min, max) =
-    if count == max
+  fixedQuantification count isStart str regex (nMin, nMax) =
+    if count == nMax
       then [(mempty, str)]
-      else stop <> more
+      else more <> stop
     where
-      stop =
-        if count >= min
-          then [(mempty, str)]
-          else []
-
       more = do
         (x, rest) <- run isStart regex str
         let isStart' = isStart && fst x == ""
-        (y, rest') <- fixedQuantification (count+1) isStart' rest regex (min, max)
+        (y, rest') <- fixedQuantification (count+1) isStart' rest regex (nMin, nMax)
         return (x <> y, rest')
+
+      stop =
+        if count >= nMin
+          then [(mempty, str)]
+          else []
+
 
   zeroOrMore :: Bool -> Regex -> String -> [((Match, [MatchGroup]), Remaining)]
   zeroOrMore isStart r str = more <> zero
@@ -212,7 +213,7 @@ lex xs =
     '|' : rest -> TokenOr : lex rest
     '{' : rest -> TokenCurlyBracketOpen : lex rest
     '}' : rest -> TokenCurlyBracketClose : lex rest
-    ',' : rest -> TikenComma : lex rest
+    ',' : rest -> TokenComma : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
@@ -358,6 +359,9 @@ parseCharacter = do
     TokenDollar -> pure '$'
     TokenCaret -> pure '^'
     TokenDot -> pure '.'
+    TokenComma -> pure ','
+    TokenCurlyBracketOpen -> pure '{'
+    TokenCurlyBracketClose -> pure '}'
     TokenParenthesisOpen -> pure '('
     TokenParenthesisClose -> pure ')'
     TokenSquareBracketsOpen -> pure '['

@@ -52,6 +52,21 @@ main = hspec $ do
       it "Negation does not match on empty string" $
         evaluate (Negation ['a','b']) "" `shouldBe` Nothing
 
+      it "fixed quantification matches" $
+        evaluate (Quantified (2,3) (MatchChar 'a')) "aaaa" `shouldBe` Just "aaa"
+
+      it "fixed quantification matches with equal numbers" $
+        evaluate (Quantified (2,2) (MatchChar 'a')) "aaaa" `shouldBe` Just "aa"
+
+      it "fixed quantification matches starting with 0" $
+        evaluate (Quantified (0,2) (MatchChar 'a')) "aaaa" `shouldBe` Just "aa"
+
+      it "fixed quantification matches starting with 0" $
+        evaluate (Quantified (0,2) (MatchChar 'a')) "bbbb" `shouldBe` Just ""
+
+      it "fixed quantification matches starting with second argument bigger than strig" $
+        evaluate (Quantified (1,9) (MatchChar 'a')) "aaaa" `shouldBe` Just "aaaa"
+
     describe "compile" $ do
       it "MatchStart" $
         compile "^" `shouldBe` MatchStart
