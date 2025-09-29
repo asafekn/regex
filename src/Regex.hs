@@ -316,6 +316,49 @@ parseWithPostfix = do
         TokenPlus -> pure (Plus regex)
         TokenAsterisk -> pure (Asterisk regex)
         TokenQuestionMark -> pure (Question regex)
+	TokenCurlyBracketOpen -> do
+	  let parseNumber = do
+		Token c <- chomp
+		case c of
+		  '0' -> pure 0
+		  '1' -> pure 1
+		  '2' -> pure 2
+		  '3' -> pure 3
+		  '4' -> pure 4
+		  '5' -> pure 5
+		  '6' -> pure 6
+		  '7' -> pure 7
+		  '8' -> pure 8
+		  '9' -> pure 9
+		  _   -> empty
+
+	  (nMin, nMax) <- do
+	    -- {Int,Int}
+	    n1 <- parseNumber
+	    TokenComma <- chomp
+	    n2 <- parseNumber
+	    pure (n1, n2)
+
+	    <|> do
+	    -- {Int,}
+	    n1 <- parseNumber
+	    TokenComma <- chomp
+	    pure (n1, 9999))
+
+	    <|> do
+	    -- {,Int}
+	    TokenComma <- chomp
+	    n2 <- parseNumber
+	    pure (0, n2))
+
+	    <|> do
+	    -- {Int}
+	    n <- parseNumber
+	    pure (n, n))
+
+	TokenCurlyBracketClose <- chomp
+	pure (Quantified (nMin, nMax) regex)
+
         _ -> empty
 
 parseBlock :: Parser Regex
