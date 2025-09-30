@@ -40,9 +40,13 @@ evaluateWithMatch rgx s = parseS (matchParser rgx) s
 
 compile :: String -> Regex
 compile str =
-  case parse parseRegex (lex str) of
+  case tryCompile str of
     Nothing -> error "Invalid regex"
     Just r -> r
+
+
+tryCompile :: String -> Maybe Regex
+tryCompile str = parse parseRegex (lex str)
 
 -- ============================================
 -- Matching
@@ -316,50 +320,60 @@ parseWithPostfix = do
         TokenPlus -> pure (Plus regex)
         TokenAsterisk -> pure (Asterisk regex)
         TokenQuestionMark -> pure (Question regex)
-	TokenCurlyBracketOpen -> do
-	  let parseNumber = do
-		Token c <- chomp
-		case c of
-		  '0' -> pure 0
-		  '1' -> pure 1
-		  '2' -> pure 2
-		  '3' -> pure 3
-		  '4' -> pure 4
-		  '5' -> pure 5
-		  '6' -> pure 6
-		  '7' -> pure 7
-		  '8' -> pure 8
-		  '9' -> pure 9
-		  _   -> empty
-
-	  (nMin, nMax) <- do
-	    -- {Int,Int}
-	    n1 <- parseNumber
-	    TokenComma <- chomp
-	    n2 <- parseNumber
-	    pure (n1, n2)
-
-	    <|> do
-	    -- {Int,}
-	    n1 <- parseNumber
-	    TokenComma <- chomp
-	    pure (n1, 9999))
-
-	    <|> do
-	    -- {,Int}
-	    TokenComma <- chomp
-	    n2 <- parseNumber
-	    pure (0, n2))
-
-	    <|> do
-	    -- {Int}
-	    n <- parseNumber
-	    pure (n, n))
-
-	TokenCurlyBracketClose <- chomp
-	pure (Quantified (nMin, nMax) regex)
-
+        TokenCurlyBracketOpen -> do
+          (nMin, nMax) <- parseBounds
+          TokenCurlyBracketClose <- chomp
+          pure (Quantified (nMin, nMax) regex)
         _ -> empty
+
+    parseBounds :: Parser (Int, Int)
+    parseBounds = twoNumbers <|> oneNumber
+      where
+      oneNumber = do
+        n <- parseNumber
+        return (n, n)
+
+      twoNumbers = do
+        nMin <- parseNumber <|> pure 0
+        TokenComma <- chomp
+        nMax <- parseNumber <|> pure maxBound
+        return (nMin, nMax)
+
+    parseNumber :: Parser Int
+    parseNumber = do
+      digits <- trim (many parseDigit)
+      case digits of
+        [] -> empty
+        _ -> return (read digits)
+
+    parseDigit :: Parser Char
+    parseDigit = do
+      Token c <- chomp
+      case c of
+        '0' -> pure c
+        '1' -> pure c
+        '2' -> pure c
+        '3' -> pure c
+        '4' -> pure c
+        '5' -> pure c
+        '6' -> pure c
+        '7' -> pure c
+        '8' -> pure c
+        '9' -> pure c
+        _   -> empty
+
+    -- Remove spaces around parsed element
+    trim :: Parser a -> Parser a
+    trim r = do
+      _ <- many space
+      result <- r
+      _ <- many space
+      return result
+      where
+        space = do
+          Token ' ' <- chomp
+          return ()
+
 
 parseBlock :: Parser Regex
 parseBlock = do

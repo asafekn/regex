@@ -111,6 +111,12 @@ main = hspec $ do
       it "[] works" $
         compile "[abc]" `shouldBe` Or (Or (MatchChar 'a') (MatchChar 'b')) (MatchChar 'c')
 
+      it "'a{2, 3}' works" $
+        compile "a{2, 3}" `shouldBe` Quantified (2,3) (MatchChar 'a')
+
+      it "{a} does not work" $
+        tryCompile "a{a}" `shouldBe` Nothing
+
     describe "run" $ do
       it "matches one character at the beginning" $
         evaluate (compile "a") "a" `shouldBe` Just "a"
@@ -183,4 +189,11 @@ main = hspec $ do
 
       it "[] works" $
         evaluate (compile "[abc^$+?*|]+") "Kabc^$+?*|K" `shouldBe` Just "abc^$+?*|"
+
+      it "Fixed quantification one number - {2}" $
+        evaluate (compile "a{2}") "aaa" `shouldBe` Just "aa"
+
+      it "Fixed quantification min and max - {2, 3}" $
+        evaluate (compile "a{2, 3}") "aaaaa" `shouldBe` Just "aaa"
+
 
