@@ -117,6 +117,15 @@ main = hspec $ do
       it "{a} does not work" $
         tryCompile "a{a}" `shouldBe` Nothing
 
+      it "[\\d] works" $
+        compile "[\\d]" `shouldBe` Or (Or (Or (Or (Or (Or (Or (Or (Or (MatchChar '0') (MatchChar '1')) (MatchChar '2')) (MatchChar '3')) (MatchChar '4')) (MatchChar '5')) (MatchChar '6')) (MatchChar '7')) (MatchChar '8')) (MatchChar '9')
+
+      it "[^\\d] works" $
+        compile "[^\\d]" `shouldBe` Negation "0123456789"
+
+      it "\\d works" $
+        compile "\\d" `shouldBe` Or (Or (Or (Or (Or (Or (Or (Or (Or (MatchChar '0') (MatchChar '1')) (MatchChar '2')) (MatchChar '3')) (MatchChar '4')) (MatchChar '5')) (MatchChar '6')) (MatchChar '7')) (MatchChar '8')) (MatchChar '9')
+
     describe "run" $ do
       it "matches one character at the beginning" $
         evaluate (compile "a") "a" `shouldBe` Just "a"
@@ -196,4 +205,12 @@ main = hspec $ do
       it "Fixed quantification min and max - {2, 3}" $
         evaluate (compile "a{2, 3}") "aaaaa" `shouldBe` Just "aaa"
 
+      it "[\\d] works with 1" $
+        evaluate (compile "[\\d]") "a1asd" `shouldBe` Just "1"
+
+      it "[\\d] works with 7" $
+        evaluate (compile "[\\d]") "s7gfgg" `shouldBe` Just "7"
+
+      it "\\d works with 2" $
+        evaluate (compile "\\d") "s2gfgg" `shouldBe` Just "2"
 

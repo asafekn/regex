@@ -198,6 +198,7 @@ data Token
   | TokenCurlyBracketOpen
   | TokenCurlyBracketClose
   | TokenComma
+  | TokenSlashDigit
   deriving (Show, Eq)
 
 lex :: String -> [Token]
@@ -218,6 +219,7 @@ lex xs =
     '{' : rest -> TokenCurlyBracketOpen : lex rest
     '}' : rest -> TokenCurlyBracketClose : lex rest
     ',' : rest -> TokenComma : lex rest
+    '\\' : 'd' : rest -> TokenSlashDigit : lex rest
     '\\' : c : rest -> Token c : lex rest
     c : rest -> Token c : lex rest
 
@@ -231,7 +233,8 @@ parse :: Parser a -> [Token] -> Maybe a
 parse (Parser f) tokens =
   case f tokens of
     [] -> Nothing
-    [(r,_)] -> Just r
+    [(r,[])] -> Just r
+    [_] -> Nothing
     _ -> error "ambiguous parse"
 
 instance Semigroup a => Semigroup (Parser a) where
@@ -383,6 +386,7 @@ parseBlock = do
     Token chr -> pure (MatchChar chr)
     TokenDollar -> pure MatchEnd
     TokenDot -> pure MatchAny
+    TokenSlashDigit -> pure (foldl1 Or (map MatchChar "0123456789"))
     TokenParenthesisOpen -> do
       r <- parseRegex
       TokenParenthesisClose <- chomp
@@ -391,12 +395,12 @@ parseBlock = do
       let
         negation = do
           TokenCaret <- chomp
-          chars <- many parseCharacter
-          pure (Negation chars)
+          c : cs <- many parseCharacter
+          pure (Negation (concat (c : cs)))
 
         oneOfChars = do
           c : cs <- many parseCharacter
-          let regchars = map MatchChar (c:cs)
+          let regchars = map MatchChar (concat (c:cs))
           pure (foldl1 Or regchars)
 
       r <- negation <|> oneOfChars
@@ -405,22 +409,23 @@ parseBlock = do
 
     _ -> empty
 
-parseCharacter :: Parser Char
+parseCharacter :: Parser [Char]
 parseCharacter = do
   token <- chomp
   case token of
-    Token char -> pure char
-    TokenPlus -> pure '+'
-    TokenAsterisk -> pure '*'
-    TokenQuestionMark -> pure '?'
-    TokenDollar -> pure '$'
-    TokenCaret -> pure '^'
-    TokenDot -> pure '.'
-    TokenComma -> pure ','
-    TokenCurlyBracketOpen -> pure '{'
-    TokenCurlyBracketClose -> pure '}'
-    TokenParenthesisOpen -> pure '('
-    TokenParenthesisClose -> pure ')'
-    TokenSquareBracketsOpen -> pure '['
+    Token char -> pure [char]
+    TokenPlus -> pure "+"
+    TokenAsterisk -> pure "*"
+    TokenQuestionMark -> pure "?"
+    TokenDollar -> pure "$"
+    TokenCaret -> pure "^"
+    TokenDot -> pure "."
+    TokenComma -> pure ","
+    TokenCurlyBracketOpen -> pure "{"
+    TokenCurlyBracketClose -> pure "}"
+    TokenParenthesisOpen -> pure "("
+    TokenParenthesisClose -> pure ")"
+    TokenSquareBracketsOpen -> pure "["
     TokenSquareBracketsClose -> empty
-    TokenOr -> pure '|'
+    TokenOr -> pure "|"
+    TokenSlashDigit -> pure "0123456789"
